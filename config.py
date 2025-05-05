@@ -1,5 +1,4 @@
 TELEGRAM_TOKEN = ""
-YANDEX_API_IDENT = ""
 YANDEX_API_KEY = ""
 YANDEX_SEARCH_URL = "https://yandex.ru/search/xml"
 YANDEX_USER = ""
