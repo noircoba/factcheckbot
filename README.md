@@ -27,8 +27,8 @@
 
 ### 1. Клонирование репозитория
 ```bash
-git clone https://github.com/yourusername/factcheck-telegram-bot.git
-cd factcheck-telegram-bot
+git clone https://github.com/noircoba/factcheckbot.git
+cd factcheckbot
 ```
 
 ### 2. Настройка конфигурации
