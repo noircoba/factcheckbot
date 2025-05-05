@@ -44,9 +44,8 @@ YANDEX_SEARCH_URL = 'https://yandex.ru/search/xml'  # URL API
 ### 3. Запуск контейнеров
 ```bash
 # Запуск Ollama с поддержкой GPU
-docker run -d -p 3000:8080 --gpus=all -v ollama:/root/.ollama \
-  --name open-webui -e local_files_only=False \
-  --restart always ghcr.io/open-webui/open-webui:ollama
+docker run -d --name ollama --restart always --gpus all  \
+   -v ollama:/root/.ollama -p 11434:11434 ollama/ollama
 
 # Сборка и запуск бота
 docker build -t factcheckbot_yac .
