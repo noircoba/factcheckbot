@@ -103,7 +103,7 @@ async def analyze_facts(text: str) -> dict:
    - ГДЕ это произошло (точная географическая привязка)
    - КОГДА это произошло (точная дата и время, если указаны)
    - КТО участвовал/сообщил/заявил (конкретные имена, должности, организации)
-   - ДОПОЛНИТЕЛЬНЫЕ детали (цифры, суммы, количества, условия)
+   - ДОПОЛНИТЕЛЬНЫЕ ДЕТАЛИ (цифры, суммы, количества, условия)
 
 2. Включай временные маркеры: "15 ноября 2024 года", "в 14:30 по московскому времени", "вчера", "на прошлой неделе"
 
@@ -116,6 +116,10 @@ async def analyze_facts(text: str) -> dict:
    - Общие рассуждения
    - Факты, не относящиеся к основной теме новости
    - Второстепенную информацию
+
+6. Собери полный контекст новости как то: ЧТО, ГДЕ, КОГДА, КТО и ДОПОЛНИТЕЛЬНЫЕ ДЕТАЛИ в отдельную строку и используй ее для добавления в каждый факт
+
+7. Проверь, что выделенные факты содержат полный контекст как то: ЧТО, ГДЕ, КОГДА, КТО и ДОПОЛНИТЕЛЬНЫЕ ДЕТАЛИ, если нет то обогати факт ими
 
 ПРИМЕР НЕПРАВИЛЬНОГО извлечения (мало контекста):
 "Произошло землетрясение"
@@ -130,15 +134,15 @@ async def analyze_facts(text: str) -> dict:
     "facts": ["полный факт 1 с максимальным контекстом", "полный факт 2 с максимальным контекстом", ...]
 }}
 
-Текст: {text[:1500]}
+Текст: {text[:2500]}
 """
-    logger.info(f"LLM Fact Extraction: {text[:100]!r}") # Логирование входного запроса
+    logger.info(f"LLM Fact Extraction: {text[:350]!r}") # Логирование входного запроса
     try:
         resp = ollama.generate(
             model='yandex/YandexGPT-5-Lite-8B-instruct-GGUF',
             prompt=prompt,
             format='json',
-            options={'temperature': 0.1, 'num_ctx': 8192}
+            options={'temperature': 0.1, 'num_ctx': 16384}
         ) # Вызов LLM с настройками
         raw = resp['response'].strip().replace('```json', '').replace('```', '') # Удаление лишних символов JSON
         try:
@@ -184,8 +188,8 @@ async def yandex_factcheck(fact: str) -> list:
         # Используем актуальный API endpoint
         api_url = 'https://yandex.ru/search/xml' # URL для запросов
         
-        logger.info(f"Отправляем запрос к Yandex Search API: {original_fact[:50]}...") # Логирование отправки запроса
-        await asyncio.sleep(uniform(0.5, 1.5)) # Рандомная задержка для избежания флуда
+        logger.info(f"Отправляем запрос к Yandex Search API: {original_fact[:150]}...") # Логирование отправки запроса
+        await asyncio.sleep(uniform(0.7, 1.2)) # Рандомная задержка для избежания флуда
         
         response = requests.post(
             api_url,
@@ -215,9 +219,9 @@ async def yandex_factcheck(fact: str) -> list:
                 snippet = ' '.join([p.text for p in doc.find_all('passage')][:3]) # Больше отрывков
         
                 results.append({
-                    'title': title[:200],
+                    'title': title[:250],
                     'url': url,
-                    'snippet': snippet[:500]  # Увеличен размер отрывка
+                    'snippet': snippet[:500]  # Размер отрывка
                 })
             except Exception as doc_err:
                 logger.warning(f"Ошибка обработки документа: {doc_err}") # Логирование ошибок при обработке документов
@@ -238,7 +242,7 @@ async def yandex_factcheck(fact: str) -> list:
 
 async def analyze_news_text(text: str) -> dict:
     """Анализ текста новости на предмет достоверности и качества"""
-    truncated_text = text[:1500] + ("..." if len(text) > 1500 else "") # Обрезка длинного текста
+    truncated_text = text[:3000] + ("..." if len(text) > 3000 else "") # Обрезка длинного текста
     
     prompt = f"""
 Проанализируй текст новости по внутренним признакам достоверности и качества журналистики:
@@ -297,7 +301,7 @@ async def analyze_news_text(text: str) -> dict:
             model='yandex/YandexGPT-5-Lite-8B-instruct-GGUF',
             prompt=prompt,
             format='json',
-            options={'temperature': 0.1, 'num_ctx': 8192}
+            options={'temperature': 0.1, 'num_ctx': 16384}
         )
         
         raw = resp['response'].strip().replace('```json', '').replace('```', '')
@@ -348,7 +352,7 @@ async def perform_factchecking(user_text, facts, fact_results):
     
     # Подготовка данных для анализа только релевантных фактов
     factcheck_data = {
-        "original_text": user_text[:1200],
+        "original_text": user_text[:3000],
         "relevant_facts": relevant_facts,
         "sources_data": {fact: fact_results[fact] for fact in relevant_facts if fact in fact_results}
     }
@@ -412,7 +416,7 @@ async def perform_factchecking(user_text, facts, fact_results):
             model='yandex/YandexGPT-5-Lite-8B-instruct-GGUF',
             prompt=prompt,
             format='json',
-            options={'temperature': 0.05, 'num_ctx': 8192}  # Снижена температура для большей точности
+            options={'temperature': 0.05, 'num_ctx': 16384}  # Снижена температура для большей точности
         )
         
         raw = resp['response'].strip().replace('```json', '').replace('```', '')
@@ -476,7 +480,7 @@ async def filter_relevant_facts(text: str, facts: list) -> list:
             model='yandex/YandexGPT-5-Lite-8B-instruct-GGUF',
             prompt=prompt,
             format='json',
-            options={'temperature': 0.1, 'num_ctx': 8192}
+            options={'temperature': 0.1, 'num_ctx': 16384}
         )
         
         raw = resp['response'].strip().replace('```json', '').replace('```', '')
@@ -520,7 +524,7 @@ async def evaluate_sources_quality(fact_results: dict) -> dict:
             sources_data.append({
                 'url': url,
                 'title': title,
-                'snippet': snippet[:200]
+                'snippet': snippet[:250]
             })
         
         # Оцениваем качество источников с помощью LLM
@@ -548,7 +552,7 @@ async def evaluate_sources_quality(fact_results: dict) -> dict:
                 model='yandex/YandexGPT-5-Lite-8B-instruct-GGUF',
                 prompt=prompt,
                 format='json',
-                options={'temperature': 0.1, 'num_ctx': 8192}
+                options={'temperature': 0.1, 'num_ctx': 16384}
             )
             
             raw = resp['response'].strip().replace('```json', '').replace('```', '')
@@ -640,7 +644,7 @@ async def generate_comprehensive_assessment(text_analysis, facts, fact_results, 
         resp = ollama.generate(
             model='yandex/YandexGPT-5-Lite-8B-instruct-GGUF',
             prompt=prompt,
-            options={'temperature': 0.1, 'num_ctx': 8192}
+            options={'temperature': 0.1, 'num_ctx': 16384}
         )
         return remove_thinking_tags(resp['response']) # Удаление маркеров мышления
     except Exception as err:
@@ -690,7 +694,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
             return
 
         if len(user_text) > 2000:
-            user_text = user_text[:2000] + "..." # Увеличен лимит
+            user_text = user_text[:2000] + "..." # лимит длинны сообщения
 
         logger.info(f"Received from {update.effective_user.id}: {user_text[:120]!r}") # Логирование получения сообщения
 
@@ -713,7 +717,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
         
         text_analysis_task = asyncio.create_task(analyze_news_text(user_text)) # Создание задачи анализа текста
         facts_data = await analyze_facts(user_text)
-        facts = facts_data.get('facts', [])[:6] # Увеличен лимит фактов
+        facts = facts_data.get('facts', [])[:6] # лимит фактов
         
         # Получаем результаты проверки фактов
         try:
@@ -795,7 +799,7 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                 
                 total_sources += sources_count
                 
-                combined_results += f"{i}. {fact[:100]}{'...' if len(fact) > 100 else ''}\n"
+                combined_results += f"{i}. {fact[:150]}{'...' if len(fact) > 150 else ''}\n"
                 combined_results += f"   Подтверждение: {status}\n"
                 combined_results += f"   Точность: {accuracy}, Уверенность: {confidence}%\n"
                 combined_results += f"   Источников найдено: {sources_count}\n"
@@ -805,17 +809,17 @@ async def handle_message(update: Update, context: ContextTypes.DEFAULT_TYPE):
                     top_source = fact_results[fact][0]
                     title = top_source.get('title', 'Без заголовка')
                     url = top_source.get('url', '')
-                    combined_results += f"   Топ-источник: {title[:80]}{'...' if len(title) > 80 else ''}\n"
+                    combined_results += f"   Топ-источник: {title[:100]}{'...' if len(title) > 100 else ''}\n"
                     if url:
-                        combined_results += f"   Ссылка: {url[:100]}{'...' if len(url) > 100 else ''}\n"
+                        combined_results += f"   Ссылка: {url[:200]}{'...' if len(url) > 200 else ''}\n"
                 combined_results += "\n"
         
         combined_results += f"📊\n"
         
         # Формируем полный отчет
         final_report = "\n".join([
-            comprehensive_report[:2000],
-            combined_results[:1500]
+            comprehensive_report[:3500],
+            combined_results[:3500]
         ]) # Объединение частей отчёта
         
         # Удаляем сообщение о обработке
